@@ -3,37 +3,49 @@ package com.example.assign4_2
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.activity.enableEdgeToEdge
+import androidx.activity.viewModels
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
 import com.example.assign4_2.ui.theme.Assign4_2Theme
 
 class MainActivity : ComponentActivity() {
-    val vm: MainViewModel = MainViewModel()
+    private val vm: MainViewModel by viewModels()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        enableEdgeToEdge()
         setContent {
             Assign4_2Theme {
                 Surface(
-                    modifier = Modifier.fillMaxSize(), // Make the surface fill the entire screen
-                    color = MaterialTheme.colorScheme.background // Use background color from the theme
+                    modifier = Modifier.fillMaxSize(),
+                    color = MaterialTheme.colorScheme.background
                 ) {
-                    // Display the main screen composable
-                    MainScreen(vm)
+                    var isSettingsScreen by remember { mutableStateOf(false) }
+                    if (isSettingsScreen) {
+                        SettingsScreen(vm) { isSettingsScreen = false }
+                    } else {
+                        MainScreen(vm) { isSettingsScreen = true }
+                    }
                 }
             }
         }
@@ -41,47 +53,68 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
-fun MainScreen(vm: MainViewModel) {
-    Column {
-        Text(text = "Counter: ${vm.getCounter()}")
-        Row{
+fun MainScreen(vm: MainViewModel, onSettingsClick: () -> Unit) {
+    val counter by vm.counter.collectAsState()
+    val autoIncrement by vm.autoIncrement.collectAsState()
+
+    Column(
+        modifier = Modifier.fillMaxSize(),
+        verticalArrangement = Arrangement.Center,
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Text(text = "Counter: $counter")
+        Text(text = "Auto mode: ${if (autoIncrement) "ON" else "OFF"}")
+        Spacer(modifier = Modifier.height(16.dp))
+        Row {
             Button(onClick = { vm.incrementCounter(false) }) {
-                Text(text = "Decrement")
+                Text(text = "-1")
             }
             Button(onClick = { vm.incrementCounter(true) }) {
-                Text(text = "Increment")
+                Text(text = "+1")
             }
         }
         Button(onClick = { vm.resetCounter() }) {
             Text(text = "Reset")
         }
-        Button(onClick = { /* open the settings composable and close this one somehow? */ }) {
+        Button(onClick = onSettingsClick) {
             Text(text = "Settings")
         }
     }
 }
 
 @Composable
-fun Settings(vm: MainViewModel) {
-    Slider(
-        value = vm.getSimpleFlowRepeatRate().toFloat(),
-        onValueChange = { vm.setSimpleFlowRepeatRate(it.toInt()) },
-        valueRange = 1f..10f)
-    Switch(checked = vm.getAutoIncrement(), onCheckedChange = { vm.setAutoIncrement(it) })
-}
+fun SettingsScreen(vm: MainViewModel, onBack: () -> Unit) {
+    val autoIncrement by vm.autoIncrement.collectAsState()
+    val simpleFlowRepeatRate by vm.simpleFlowRepeatRate.collectAsState()
 
-@Preview(showBackground = true)
-@Composable
-fun MainPagePreview() {
-    Assign4_2Theme {
-        MainScreen(vm = MainViewModel())
-    }
-}
-
-@Preview(showBackground = true)
-@Composable
-fun SettingsPreview() {
-    Assign4_2Theme {
-        Settings(vm = MainViewModel())
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Text(text = "Auto-increment")
+            Switch(
+                checked = autoIncrement,
+                onCheckedChange = { vm.setAutoIncrement(it) }
+            )
+        }
+        Spacer(modifier = Modifier.height(16.dp))
+        Text(text = "Auto-increment interval: $simpleFlowRepeatRate seconds")
+        Slider(
+            value = simpleFlowRepeatRate.toFloat(),
+            onValueChange = { vm.setSimpleFlowRepeatRate(it.toInt()) },
+            valueRange = 1f..10f,
+            steps = 9
+        )
+        Spacer(modifier = Modifier.height(32.dp))
+        Button(onClick = onBack) {
+            Text(text = "Back")
+        }
     }
 }
